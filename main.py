@@ -104,8 +104,6 @@ def insert_new_book():
         except sqlite3.IntegrityError as e:
             print(f"Failed to insert the book. Error: {e}")
 
-
-
 def update_document():
     isbn = input("Enter the ISBN of the document to update: ")
     print("What would you like to update?")
@@ -157,8 +155,6 @@ def return_document():
         else:
             print("No loan record found for this document and client.")
 
-
-
 def update_client_information():
     email = input("Enter the client's email to update: ")
     print("Select an option to update:")
@@ -202,8 +198,6 @@ def update_client_information():
         else:
             print("Invalid choice. Please try again.")
 
-
-
 def register_new_client():
     print("Register New Client:")
     name = input("Enter client's name: ")
@@ -221,7 +215,7 @@ def register_new_client():
             cursor.execute("INSERT INTO client (email, name) VALUES (?, ?)", (email, name))
             address_ids = []
             for address in addresses:
-                cursor.execute("INSERT INTO addresses (client_email, address) VALUES (?, ?)", (email, address))
+                cursor.execute("INSERT INTO client_addresses (client_email, address) VALUES (?, ?)", (email, address))
                 address_ids.append(cursor.lastrowid)
             for card_number in payment_methods:
                 address_id = address_ids[min(len(address_ids) - 1, payment_methods.index(card_number))]  # Associate with corresponding address or last one
@@ -230,7 +224,6 @@ def register_new_client():
             print("Client registered successfully with multiple addresses and payment methods.")
         except sqlite3.IntegrityError as e:
             print(f"Failed to register client. Error: {e}")
-
 
 def delete_client():
     email = input("Enter the client's email to delete: ")
@@ -330,7 +323,6 @@ def borrow_document():
         else:
             print("This document is currently unavailable.")
 
-
 def client_management_menu():
     print("Client Management:")
     print("1. Register New Client")
@@ -400,7 +392,15 @@ def main():
                     elif librarian_choice == "3":
                         break  # Go back to the main librarian menu
                 elif choice == "3":
-                    client_management_menu()
+                    client_management_choice = client_management_menu()
+                    if client_management_choice == "1":
+                        register_new_client()
+                    elif client_management_choice == "2":
+                        update_client_information()
+                    elif client_management_choice == "3":
+                        delete_client()
+                    elif client_management_choice == "4":
+                        break  # Go back to the main librarian menu
                 elif choice == "4":
                     view_lent_out_documents()
                 elif choice == "5":

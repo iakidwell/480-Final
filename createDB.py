@@ -14,10 +14,13 @@ def create_schema():
     ''')
 
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS credit_card (
-            credit_card_number VARCHAR(16) PRIMARY KEY,
-            ccv_number VARCHAR(3),
-            address VARCHAR(255)
+        CREATE TABLE IF NOT EXISTS credit_cards (
+            client_email VARCHAR(255),
+            credit_card_number VARCHAR(16),
+            address_id INTEGER,
+            PRIMARY KEY (client_email, credit_card_number),
+            FOREIGN KEY (client_email) REFERENCES client(email),
+            FOREIGN KEY (address_id) REFERENCES client_addresses(address_id)
         )
     ''')
 
