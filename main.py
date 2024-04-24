@@ -363,14 +363,37 @@ def manage_payment_methods_menu():
     choice = input("Enter your choice: ")
     return choice
 
+def authenticate_user(email, password):
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+
+        # Check if the email and password match a librarian record
+        cursor.execute("SELECT email FROM librarian WHERE email = ? AND password = ?", (email, password))
+        librarian = cursor.fetchone()
+        if librarian:
+            return "LIBRARIAN"
+
+        # Check if the email and password match a client record
+        cursor.execute("SELECT email FROM client WHERE email = ? AND password = ?", (email, password))
+        client = cursor.fetchone()
+        if client:
+            return "CLIENT"
+
+        # No match found
+        return None
+
 def main():
     # Initialize the database schema
     createDB.create_schema()
-    # Main loop
+    
     while True:
-        user_type = input("Are you a librarian or a client? (L/C): ").upper()
-        
-        if user_type == "L":
+        # Prompt for login
+        email = input("Enter your email: ")
+        password = input("Enter your password: ")
+
+        # Check if login credentials match librarian or client records
+        user_role = authenticate_user(email, password)
+        if user_role == "LIBRARIAN":
             while True:
                 choice = librarian_menu()
                 if choice == "1":
@@ -408,8 +431,7 @@ def main():
                     return  # Exit the main program
                 else:
                     print("Invalid choice. Please try again.")
-        
-        elif user_type == "C":
+        elif user_role == "CLIENT":
             while True:
                 choice = client_menu()
                 if choice == "1":
@@ -448,9 +470,8 @@ def main():
                     return  # Exit the main program
                 else:
                     print("Invalid choice. Please try again.")
-        
         else:
-            print("Invalid choice. Please enter 'L' for librarian or 'C' for client.")
+            print("Invalid email or password. Please try again.")
 
 if __name__ == "__main__":
     main()

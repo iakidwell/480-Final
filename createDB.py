@@ -29,8 +29,7 @@ def create_schema():
             email VARCHAR(255) PRIMARY KEY,
             overdue_fees DECIMAL(10, 2),
             name VARCHAR(255),
-            log_email VARCHAR(255),
-            FOREIGN KEY (log_email) REFERENCES log(email)
+            password VARCHAR(255)
         )
     ''')
 
@@ -66,9 +65,8 @@ def create_schema():
             SSN VARCHAR(255) PRIMARY KEY,
             name VARCHAR(255),
             email VARCHAR(255),
-            salary DECIMAL(10, 2),
-            log_email VARCHAR(255),
-            FOREIGN KEY (log_email) REFERENCES log(email)
+            password VARCHAR(255),
+            salary DECIMAL(10, 2)
         )
     ''')
 
@@ -163,6 +161,14 @@ def create_schema():
             FOREIGN KEY (copy_number) REFERENCES document(copy_number)
         )
     ''')
+
+    # Insert default admin librarian
+    cursor.execute("INSERT OR IGNORE INTO librarian (SSN, name, email, password, salary) VALUES (?, ?, ?, ?, ?)",
+                   ("111-11-1111", "Admin Librarian", "admin-librarian@example.com", "admin123", 0.00))
+
+    # Insert default admin client
+    cursor.execute("INSERT OR IGNORE INTO client (email, password, overdue_fees, name) VALUES (?, ?, ?, ?)",
+                   ("admin-client@example.com", "admin123", 0.00, "Admin Client"))
 
     # Commit changes and close connection
     conn.commit()
