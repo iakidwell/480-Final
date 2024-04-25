@@ -20,6 +20,16 @@ def manage_librarians_menu():
     choice = input("Enter your choice: ")
     return choice
 
+def manage_documents_menu():
+    print("Manage Documents:")
+    print("1. Insert New Document")
+    print("2. Update Document")
+    print("3. Delete Document Copy")
+    print("4. View Document")
+    print("5. Go Back to Librarian Menu")
+    choice = input("Enter your choice: ")
+    return choice
+
 def add_librarian():
     print("Add New Librarian:")
     ssn = input("Enter SSN: ")
@@ -69,15 +79,6 @@ def update_librarian():
             print("Librarian updated successfully.")
         else:
             print("No librarian found with the given SSN or no updates made.")
-
-def manage_documents_menu():
-    print("Manage Documents:")
-    print("1. Insert New Document")
-    print("2. Update Document")
-    print("3. Delete Document Copy")
-    print("4. Go Back to Librarian Menu")
-    choice = input("Enter your choice: ")
-    return choice
 
 def insert_new_book():
     print("Insert New Book:")
@@ -154,6 +155,37 @@ def return_document():
             print("Document returned successfully.")
         else:
             print("No loan record found for this document and client.")
+
+def view_document_details():
+    choice = input("Do you want to view all documents or a specific document? (all/specific): ").lower()
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+        if choice == "specific":
+            isbn = input("Enter the ISBN of the document: ")
+            cursor.execute("SELECT * FROM book WHERE isbn = ?", (isbn,))
+            book = cursor.fetchone()
+            if book:
+                print(f"ISBN: {book[0]}, Title: {book[1]}, Publisher: {book[2]}, Edition: {book[3]}, Number of Pages: {book[4]}")
+                cursor.execute("SELECT author FROM book_authors WHERE isbn = ?", (isbn,))
+                authors = cursor.fetchall()
+                print("Authors: " + ", ".join(author[0] for author in authors))
+            else:
+                print("No document found with the given ISBN.")
+        elif choice == "all":
+            cursor.execute("SELECT * FROM book")
+            books = cursor.fetchall()
+            if books:
+                print("All documents in the library:")
+                for book in books:
+                    print(f"ISBN: {book[0]}, Title: {book[1]}, Publisher: {book[2]}, Edition: {book[3]}, Number of Pages: {book[4]}")
+                    cursor.execute("SELECT author FROM book_authors WHERE isbn = ?", (book[0],))
+                    authors = cursor.fetchall()
+                    print("Authors: " + ", ".join(author[0] for author in authors))
+                    print("-" * 40)
+            else:
+                print("No documents found in the library.")
+        else:
+            print("Invalid choice. Please enter 'all' or 'specific'.")
 
 def update_client_information():
     email = input("Enter the client's email to update: ")
@@ -241,6 +273,7 @@ def delete_client():
         else:
             print("No client found with the given email.")
 
+# Search functions
 def search_documents_by_title():
     title_search = input("Enter the title to search for: ")
     
@@ -347,6 +380,7 @@ def search_document_by_year():
         else: 
             print("No books found with the given year")
 
+# Payment Method functions
 def add_payment_methods():
     with sqlite3.connect('library.db') as conn:
         cursor = conn.cursor()
@@ -363,10 +397,10 @@ def add_payment_methods():
             return#Exit
         
         #Validate address
-        cursor.execute("SELECT address_id FROM client_addresses WHERE email = ? AND address_id = ?", (email, address_id))
-        if not cursor.fetchone():
-            print("Invalid address for the given client.")
-            return
+        #cursor.execute("SELECT address_id FROM client_addresses WHERE email = ? AND address_id = ?", (email, address_id))
+        #if not cursor.fetchone():
+        #    print("Invalid address for the given client.")
+        #    return
         
         #Attempt to entry credit card information
         try:
@@ -513,21 +547,24 @@ def delete_document_copy():
             print("Document copy not found.")
 
 def view_lent_out_documents():
-    with sqlite3.connect('library.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT cl.email, b.title, cl.due_date
-            FROM client_loans cl
-            JOIN book b ON cl.isbn = b.isbn
-            WHERE cl.returned = 0  -- Assuming there is a 'returned' flag in your client_loans table
-        """)
-        loans = cursor.fetchall()
-        if loans:
-            print("Currently Lent Out Documents:")
-            for loan in loans:
-                print(f"Client Email: {loan[0]}, Title: {loan[1]}, Due Date: {loan[2]}")
-        else:
-            print("No documents are currently lent out.")
+    try:
+        with sqlite3.connect('library.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT cl.email, b.title, cl.due_date
+                FROM client_loans cl
+                JOIN book b ON cl.isbn = b.isbn
+                WHERE cl.returned = 0
+            """)
+            loans = cursor.fetchall()
+            if loans:
+                print("Currently Lent Out Documents:")
+                for loan in loans:
+                    print(f"Client Email: {loan[0]}, Title: {loan[1]}, Due Date: {loan[2]}")
+            else:
+                print("No documents are currently lent out.")
+    except sqlite3.Error as e:
+        print(f"An error occurred: {e}")
 
 def borrow_document():
     email = input("Enter your email: ")
@@ -596,9 +633,45 @@ def manage_payment_methods_menu():
     print("Manage Payment Methods:")
     print("1. Add Payment Method")
     print("2. Delete Payment Method")
-    print("3. Go Back to Client Menu")
+    print("3. View Payment Methods")
+    print("4. Go Back to Client Menu")
     choice = input("Enter your choice: ")
     return choice
+
+def manage_payment_debt():
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+
+        #User input
+        email = input("Enter clients email")
+        credit_card_number = input("Enter payment card")
+
+        #Validate user email
+        cursor.execute("SELECT email FROM client WHERE email = ?", (email,))
+        if not cursor.fetchone():
+            print("Invalid email address with given user")
+            return#exit
+        
+        #Validate payment card
+        cursor.execute("SELECT credit_card_number FROM credit_cards WHERE client_email = ? AND credit_card_number = ?", (email, credit_card_number))
+        if not cursor.fetchone():
+            print("Invalid payment method.")
+            return#exit
+        
+        #Check overdue fee's
+        cursor.execute("SELECT overdue_fees FROM client WHERE email = ?", (email,))
+        overdue_fees = cursor.fetchone()
+
+        #Attempt to make payments
+        if overdue_fees and overdue_fees[0] > 0:
+            print(f"Payment processing for overdue fees ${overdue_fees[0]:.2f}.")
+            cursor.execute("UPDATE client SET overdue_fees = 0 WHERE email = ?", (email,))
+            conn.commit()
+            print("Payment successful. Overdue fees cleared")
+        elif overdue_fees and overdue_fees[0] == 0:
+            print("User has no overdue fees")
+        else:
+            print("Failed to pull overdue fees.")
 
 def authenticate_user(email, password):
     with sqlite3.connect('library.db') as conn:
@@ -634,15 +707,18 @@ def main():
             while True:
                 choice = librarian_menu()
                 if choice == "1":
-                    doc_choice = manage_documents_menu()
-                    if doc_choice == "1":
-                        insert_new_book()
-                    elif doc_choice == "2":
-                        update_document()
-                    elif doc_choice == "3":
-                        delete_document_copy()
-                    elif doc_choice == "4":
-                        break  # Go back to the main librarian menu
+                    while True:
+                        doc_choice = manage_documents_menu()
+                        if doc_choice == "1":
+                            insert_new_book()
+                        elif doc_choice == "2":
+                            update_document()
+                        elif doc_choice == "3":
+                            delete_document_copy()
+                        elif doc_choice == "4":
+                            view_document_details()  # Call the function to view document details
+                        elif doc_choice == "5":
+                            break  # Go back to the main librarian menu                
                 elif choice == "2":
                     librarian_choice = manage_librarians_menu()
                     if librarian_choice == "1":
@@ -683,10 +759,12 @@ def main():
                     while True:
                         payment_choice = manage_payment_methods_menu()
                         if payment_choice == "1":
-                            print("Adding payment method...")
+                            add_payment_methods()
                         elif payment_choice == "2":
-                            print("Deleting payment method...")
+                            delete_payment_methods()
                         elif payment_choice == "3":
+                            display_payment_options()
+                        elif payment_choice == "4":
                             break  # Go back to the main client menu
                 elif choice == "6":
                     print("Exiting the program...")

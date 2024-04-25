@@ -53,10 +53,13 @@ def create_schema():
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS client_loans (
-            email VARCHAR(255),
-            isbn VARCHAR(13),
-            PRIMARY KEY (email, isbn),
-            FOREIGN KEY (email) REFERENCES client(email)
+            email TEXT NOT NULL,
+            copy_number INTEGER NOT NULL,
+            due_date TEXT NOT NULL,
+            returned INTEGER DEFAULT 0,
+            PRIMARY KEY (email, copy_number),
+            FOREIGN KEY (email) REFERENCES client(email),
+            FOREIGN KEY (copy_number) REFERENCES document(copy_number)
         )
     ''')
 
@@ -83,8 +86,9 @@ def create_schema():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS document (
             copy_number INT PRIMARY KEY,
-            on_loan BOOLEAN,
-            year INT
+            isbn TEXT NOT NULL,
+            on_loan BOOLEAN NOT NULL DEFAULT 0,
+            FOREIGN KEY (isbn) REFERENCES book(isbn)
         )
     ''')
 
@@ -94,7 +98,10 @@ def create_schema():
             journal_name VARCHAR(255),
             isbn VARCHAR(13),
             issue_number INT,
-            publisher VARCHAR(255)
+            publisher VARCHAR(255),
+            copy_number INT,
+            on_loan BOOLEAN,
+            year INT
         )
     ''')
 
@@ -107,12 +114,12 @@ def create_schema():
         )
     ''')
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS bound_document (
-            isbn VARCHAR(13) PRIMARY KEY,
-            publisher VARCHAR(255)
-        )
-    ''')
+#    cursor.execute('''
+#        CREATE TABLE IF NOT EXISTS bound_document (
+#            isbn VARCHAR(13) PRIMARY KEY,
+#            publisher VARCHAR(255)
+#        )
+#    ''')
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS magazine (
@@ -129,14 +136,17 @@ def create_schema():
             publisher VARCHAR(255),
             title VARCHAR(255),
             edition VARCHAR(255),
-            num_pages INT
+            num_pages INT,
+            copy_number INT,
+            on_loan BOOLEAN,
+            year INT
         )
     ''')
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS book_authors (
-            isbn VARCHAR(13),
-            author VARCHAR(255),
+            isbn TEXT NOT NULL,
+            author TEXT NOT NULL,
             PRIMARY KEY (isbn, author),
             FOREIGN KEY (isbn) REFERENCES book(isbn)
         )
@@ -169,6 +179,12 @@ def create_schema():
     # Insert default admin client
     cursor.execute("INSERT OR IGNORE INTO client (email, password, overdue_fees, name) VALUES (?, ?, ?, ?)",
                    ("admin-client@example.com", "admin123", 0.00, "Admin Client"))
+
+    # Ensuring indexes are created for efficient searching
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_book_title ON book(title)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_book_isbn ON book(isbn)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_authors_name ON book_authors(author)")
+    cursor.execute("ALTER TABLE client_loans ADD COLUMN due_date TEXT NOT NULL")
 
     # Commit changes and close connection
     conn.commit()
