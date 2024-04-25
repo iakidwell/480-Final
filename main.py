@@ -254,6 +254,226 @@ def search_documents_by_title():
         else:
             print("No books found with the given title.")
 
+def search_documents_by_author():
+    author_search = input("Enter the author of books: ")
+
+    with sqlite3.connect('library.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                        SELECT b.isbn, b.title, b.publisher 
+                        FROM book b 
+                        JOIN book_authors ba ON b.isbn = ba.isbn 
+                        WHERE ba.author LIKE ?
+                    """, ('%' + author_search + '%',))
+            books = cursor.fetchall()
+            
+            if books:
+                print("Books found:")
+                for book in books:
+                    print(f"ISBN: {book[0]}, Title: {book[1]}, Publisher: {book[2]}")
+            else:
+                print("No books found with the given author.")
+
+def search_documents_by_isbn():
+    isbn_search = input("Enter ISBN of book: ")
+
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT isbn, title, publisher, edition, num_pages FROM book WHERE isbn = ?", (isbn_search,))
+        books = cursor.fetchall()
+
+        if books:
+            print("Books found: ")
+            for book in books:
+                print(f"ISBN: {book[0]}, Title: {book[1]}, Publisher: {book[2]}")
+        else:
+            print("No books found with the given ISBN. ")
+
+def search_documents_by_publisher():
+    publisher_search = input("Enter publisher of book: ")
+
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT isbn, title, publisher 
+            FROM book 
+            WHERE publisher LIKE ?
+        """, ('%' + publisher_search + '%',))
+
+        books = cursor.fetchall()
+
+        if books:
+            print("Books found:")
+            for book in books:
+                print(f"ISBN: {book[0]}, Title: {book[1]}, Publisher: {book[2]}")
+        else:
+            print("No books found with the given publisher")
+
+def search_documents_by_edition():
+    edition_search = input("Enter edition of book")
+
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("""SELECT isbn, title, publisher, edition
+                       FROM book
+                       WHERE edition LIKE ?
+                        """, ('%' + edition_search + '%',))        
+        books = cursor.fetchall()
+
+        if books:
+            print("Books found:")
+            for book in books:
+                print(f"ISBN: {book[0]}, Title: {book[1]}, Publisher: {book[2]}, Edition: {book[3]}")
+        else:
+            print("No books found with the given publisher")
+
+def search_document_by_year():
+    year_search = input("Enter year of book: ")
+
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+                       SELECT isbn, title, publisher, year
+                       FROM book
+                       WHERE year LIKE ?
+                       """, ('%' + year_search + '%',))
+        books = cursor.fetchall()
+
+        if books:
+            print("Books found:")
+            for book in books:
+                print(f"ISBN: {book[0]}, Title: {book[1]}, Publisher: {book[2]}, Edition: {book[3]}")
+
+        else: 
+            print("No books found with the given year")
+
+def add_payment_methods():
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+
+        #User input
+        email = input("Enter the client email: ")
+        credit_card_number = input("Enter the credit card number: ")
+        address_id = input("Enter address of client: ")
+
+        #Validate email
+        cursor.execute("SELECT email FROM client WHERE email = ?", (email,))
+        if not cursor.fetchone():
+            print("No client found with given email.")
+            return#Exit
+        
+        #Validate address
+        cursor.execute("SELECT address_id FROM client_addresses WHERE email = ? AND address_id = ?", (email, address_id))
+        if not cursor.fetchone():
+            print("Invalid address for the given client.")
+            return
+        
+        #Attempt to entry credit card information
+        try:
+            cursor.execute("""
+                            INSERT INTO credit_cards (client_email, credit_card_number, address_id) 
+                            VALUES (?, ?, ?) """,
+                           (email, credit_card_number, address_id))
+            conn.commit()
+            print("Payment method added succesfully.")
+        except sqlite3.IntegrityError as e:
+            print(f"Failed to add payment method. Error: {e}")
+
+def delete_payment_methods():
+
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+
+        #Input user
+        email = input("Enter Clients email: ")
+        credit_card_number = input("Enter the credit card number: ")
+
+        #Validate the clients email
+        cursor.execute("SELECT email FROM client WHERE email = ?", (email,))
+        if not cursor.fetchone():
+            print("Invalid email address with given uesr")
+            return#exit
+        
+        #Validate Credit card number
+        cursor.execute("SELECT credit_card_number FROM credit_cards WHERE client_email = ? AND credit_card_number = ?", (email, credit_card_number))
+        if not cursor.fetchone():
+            print("No credit card number exists")
+            return#exit
+        
+        #Attempt to remove credit card
+        try:
+            cursor.execute("DELETE FROM credit_cards WHERE client_email = ? AND credit_card_number = ?", (email, credit_card_number))
+            conn.commit()
+            print("Credit card delete successfully.")
+        except sqlite3.Error as e:
+            print(f"Failed to delete the credit card. Error: {e}")
+                                                   
+def display_payment_options():
+
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+
+        #Input user
+        email = input("Enter clients email: ")
+
+
+        #Validate email
+        cursor.execute("SELECT email FROM client WHERE email = ?", (email,))
+        if not cursor.fetchone():
+            print("Invalid email addresss with given user")
+            return#exit
+
+
+        # Fetch and display credit card details
+        cursor.execute("""
+            SELECT credit_card_number, address_id 
+            FROM credit_cards 
+            WHERE client_email = ?
+        """, (email,))
+
+        cards = cursor.fetchall()
+        if cards:
+            for card in cards:
+                print(f"Credit Card Number: {card[0]}, Address ID: {card[1]}")
+        else:
+            print("No payment methods found for this client.")
+        
+#Updated
+def manage_payment_debt():
+    with sqlite3.connect('library.db') as conn:
+        cursor = conn.cursor()
+
+        #User input
+        email = input("Enter clients email")
+        credit_card_number = input("Enter payment card")
+
+        #Validate user email
+        cursor.execute("SELECT email FROM client WHERE email = ?", (email,))
+        if not cursor.fetchone():
+            print("Invalid email address with given user")
+            return#exit
+        
+        #Validate payment card
+        cursor.execute("SELECT credit_card_number FROM credit_cards WHERE client_email = ? AND credit_card_number = ?", (email, credit_card_number))
+        if not cursor.fetchone():
+            print("Invalid payment method.")
+            return#exit
+        
+        #Check overdue fee's
+        cursor.execute("SELECT overdue_fees FROM client WHERE email = ?", (email,))
+        overdue_fees = cursor.fetchone()
+
+        #Attempt to make payments
+        if overdue_fees and overdue_fees[0] > 0:
+            print(f"Payment processing for overdue fees ${overdue_fees[0]:.2f}.")
+            cursor.execute("UPDATE client SET overdue_fees = 0 WHERE email = ?", (email,))
+            conn.commit()
+            print("Payment successful. Overdue fees cleared")
+        elif overdue_fees and overdue_fees[0] == 0:
+            print("User has no overdue fees")
+        else:
+            print("Failed to pull overdue fees.")
+
 def search_documents_advanced():
     print("Advanced Document Search:")
     search_type = input("Search by (title/author/isbn/publisher/year): ").lower()
@@ -343,6 +563,9 @@ def client_menu():
     choice = input("Enter your choice: ")
     return choice
 
+#Added if branches
+#Removed return
+#Updated
 def search_documents_menu():
     print("Search for Documents:")
     print("1. Search by Title")
@@ -353,7 +576,21 @@ def search_documents_menu():
     print("6. Search by Year")
     print("7. Go Back to Client Menu")
     choice = input("Enter your choice: ")
-    return choice
+
+    if choice == "1":
+        search_documents_by_title()
+    elif choice == "2":
+        search_documents_by_author()
+    elif choice == "3":
+        search_documents_by_isbn()
+    elif choice == "4":
+        search_documents_by_publisher()
+    elif choice == "5":
+        search_documents_by_edition()
+    elif choice == "6":
+        search_document_by_year()
+    elif choice == "7":
+        return  # exit
 
 def manage_payment_methods_menu():
     print("Manage Payment Methods:")
@@ -436,20 +673,6 @@ def main():
                 choice = client_menu()
                 if choice == "1":
                     search_choice = search_documents_menu()
-                    if search_choice == "1":
-                        search_documents_by_title()
-                    elif search_choice == "2":
-                        print("Searching documents by author...")
-                    elif search_choice == "3":
-                        print("Searching documents by ISBN...")
-                    elif search_choice == "4":
-                        print("Searching documents by publisher...")
-                    elif search_choice == "5":
-                        print("Searching documents by edition...")
-                    elif search_choice == "6":
-                        print("Searching documents by year...")
-                    elif search_choice == "7":
-                        break  # Go back to the main client menu
                 elif choice == "2":
                     borrow_document()
                 elif choice == "3":

@@ -6,12 +6,12 @@ cursor = conn.cursor()
 
 # Create tables
 def create_schema():
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS log (
-            email VARCHAR(255) PRIMARY KEY,
-            password VARCHAR(255)
-        )
-    ''')
+    #cursor.execute('''
+    #    CREATE TABLE IF NOT EXISTS log (
+    #        email VARCHAR(255) PRIMARY KEY,
+    #        password VARCHAR(255)
+    #    )
+    #''')
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS credit_cards (
